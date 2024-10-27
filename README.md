@@ -10,6 +10,7 @@ This proxy is compatible with both IPv6 and IPv4 subnets.
 
 ### Requirements
 * Linux (due to the reliance on `IP_FREEBIND`)
+* Correctly assigned and configured network subnet on the machine
 
 ### Installation
 
