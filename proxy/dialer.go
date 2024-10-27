@@ -3,7 +3,9 @@ package proxy
 import (
 	"github.com/codercms/freebind-proxy/utils"
 	"log"
+	"math/rand/v2"
 	"net"
+	"net/netip"
 	"syscall"
 )
 
@@ -12,28 +14,25 @@ type DialerFactoryIface interface {
 }
 
 type RandIpDialerFactory struct {
-	subnet *net.IPNet
+	randReader *rand.Rand
 
-	minAddr utils.IPUint128
-	maxAddr utils.IPUint128
+	prefix netip.Prefix
 }
 
-func MakeRandIpDialerFactory(subnet *net.IPNet) *RandIpDialerFactory {
-	minAddr, maxAddr := utils.GetLowerUpperIPsWithUint128(subnet)
-
+func MakeRandIpDialerFactory(randReader *rand.Rand, prefix netip.Prefix) *RandIpDialerFactory {
 	return &RandIpDialerFactory{
-		subnet:  subnet,
-		minAddr: minAddr,
-		maxAddr: maxAddr,
+		randReader: randReader,
+
+		prefix: prefix,
 	}
 }
 
 func (f *RandIpDialerFactory) GetDialer() *net.Dialer {
-	randIp := utils.GetRandomIpFromRange(f.minAddr, f.maxAddr)
+	randIp := utils.GetRandomIpFromPrefix(f.randReader, f.prefix)
 
 	d := net.Dialer{
 		LocalAddr: &net.TCPAddr{
-			IP: randIp.GetIP(),
+			IP: randIp.AsSlice(),
 		},
 
 		Control: func(network, address string, c syscall.RawConn) error {

@@ -12,6 +12,18 @@ This proxy is compatible with both IPv6 and IPv4 subnets.
 * Linux (due to the reliance on `IP_FREEBIND`)
 * Correctly assigned and configured network subnet on the machine
 
+### Setup
+
+Assume your ISP has assigned the subnet `2a00:1450:4001:81b::/64` to your server.
+
+In order to make use of freebinding, you first need to configure the
+[Linux AnyIP kernel feature](https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=ab79ad14a2d51e95f0ac3cef7cd116a57089ba82) 
+in order to be able to bind a socket to an arbitrary IP address from this subnet as follows:
+
+```shell
+ip -6 route add local 2a00:1450:4001:81b::/64 dev lo
+```
+
 ### Installation
 
 * As a Standalone Binary:
@@ -28,7 +40,7 @@ This proxy is compatible with both IPv6 and IPv4 subnets.
 
 * **Run as a Binary**: After installation, execute the binary from your $GOPATH/bin:
     ```shell
-    freebind-proxy -net 2001:db8::/32
+    freebind-proxy -net 2a00:1450:4001:81b::/64
     ```
     See `-help` for more options
 

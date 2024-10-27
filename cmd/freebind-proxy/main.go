@@ -4,19 +4,23 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/binary"
 	"errors"
 	"flag"
 	"github.com/codercms/freebind-proxy/proxy"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"log"
-	"net"
+	"math/rand/v2"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/exec"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 )
 
 var localNet string
@@ -27,6 +31,8 @@ var listenAddr string
 
 var authUser string
 var authPass string
+
+var randSeed string
 
 var logLevel string
 
@@ -41,12 +47,14 @@ func init() {
 	flag.StringVar(&authPass, "auth-pass", "", "Authentication password (HTTP basic)")
 
 	flag.StringVar(&logLevel, "log-level", "info", "Log level (debug, info, warn, error, fatal)")
+
+	flag.StringVar(&randSeed, "rand-seed", "", "Random seed for IP address generator (32 bytes)\nDefault: sha256(currentTime)")
 }
 
 func main() {
 	flag.Parse()
 
-	_, ipNet, err := net.ParseCIDR(strings.TrimSpace(localNet))
+	ipNet, err := netip.ParsePrefix(strings.TrimSpace(localNet))
 	if err != nil {
 		log.Fatal("Failed to parse subnet", err)
 	}
@@ -103,7 +111,25 @@ func main() {
 		}
 	}
 
-	dialerFactory := proxy.MakeRandIpDialerFactory(ipNet)
+	var randReader *rand.Rand
+	{
+		var seed [32]byte
+		if len(randSeed) > 0 {
+			copy(seed[:], randSeed)
+		} else {
+			t := time.Now().UnixNano()
+			timeBytes := make([]byte, 8)
+			binary.LittleEndian.PutUint64(timeBytes, uint64(t))
+
+			// Hash the time-derived bytes to ensure a 32-byte seed.
+			seed = sha256.Sum256(timeBytes)
+		}
+
+		randSrc := rand.NewChaCha8(seed)
+		randReader = rand.New(randSrc)
+	}
+
+	dialerFactory := proxy.MakeRandIpDialerFactory(randReader, ipNet)
 
 	if len(listenAddr) > 0 {
 		options = append(options, proxy.WithListenAddr(listenAddr))

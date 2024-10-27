@@ -1,6 +1,8 @@
 // Copyright 2020 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
+//
+// Copied from Go netip package
 
 package utils
 
@@ -80,19 +82,4 @@ func (u uint128) bitsSetFrom(bit uint8) uint128 {
 // and all subsequent ones cleared.
 func (u uint128) bitsClearedFrom(bit uint8) uint128 {
 	return u.and(mask6(int(bit)))
-}
-
-// cmp compares u and v and returns:
-//
-//	-1 if u <  v
-//	 0 if u == v
-//	+1 if u >  v
-func (u uint128) cmp(v uint128) int {
-	if u == v {
-		return 0
-	} else if u.hi < v.hi || (u.hi == v.hi && u.lo < v.lo) {
-		return -1
-	} else {
-		return 1
-	}
 }
