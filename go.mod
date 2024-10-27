@@ -1,6 +1,6 @@
 module github.com/codercms/freebind-proxy
 
-go 1.23.0
+go 1.22.1
 
 require (
 	github.com/elazarl/goproxy v0.0.0-20240909085733-6741dbfc16a1
