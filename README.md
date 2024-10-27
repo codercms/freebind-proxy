@@ -15,7 +15,7 @@ This proxy is compatible with both IPv6 and IPv4 subnets.
 
 * As a Standalone Binary:
     ```shell
-    go install github.com/codercms/freebind-proxy/cmd@latest
+    go install github.com/codercms/freebind-proxy/cmd/freebind-proxy@latest
     ```
 
 * As an Embeddable Library:
