@@ -42,9 +42,9 @@ func (f *RandIpDialerFactory) GetDialer() *net.Dialer {
 					log.Printf("Failed to set IP_FREEBIND: %v\n", err)
 				}
 
-				if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_KEEPALIVE, 1); err != nil {
-					log.Printf("Failed to set SO_KEEPALIVE: %v\n", err)
-				}
+				//if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_KEEPALIVE, 1); err != nil {
+				//	log.Printf("Failed to set SO_KEEPALIVE: %v\n", err)
+				//}
 			})
 		},
 	}

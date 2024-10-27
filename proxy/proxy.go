@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -52,39 +53,57 @@ func MakeServer(dFactory DialerFactoryIface, options ...Option) *Server {
 	return srv
 }
 
-var sockHookInstalled = struct{}{}
+type roundTripper struct {
+	transport *http.Transport
+}
 
-func (s *Server) hookCtx(dFactory DialerFactoryIface, ctx *goproxy.ProxyCtx) {
-	// Do not reinstall hook
-	if ctx.UserData == sockHookInstalled {
-		return
-	}
-
-	dialer := dFactory.GetDialer()
-
-	// Assign new transport to proxy for each request
-	ctx.Proxy.Tr = ctx.Proxy.Tr.Clone()
-	ctx.Proxy.Tr.Dial = dialer.Dial
-	ctx.Proxy.Tr.DialContext = dialer.DialContext
-	ctx.UserData = sockHookInstalled
-
-	if dialer.LocalAddr != nil && s.logger.Level().Enabled(zap.DebugLevel) {
-		s.logger.Debug("Select IP to perform request", zap.String("ip", dialer.LocalAddr.String()))
-	}
+func (rt *roundTripper) RoundTrip(req *http.Request, ctx *goproxy.ProxyCtx) (*http.Response, error) {
+	return rt.transport.RoundTrip(req)
 }
 
 type proxyLogger struct {
-	logger *zap.Logger
+	logger *zap.SugaredLogger
 }
 
-func (p *proxyLogger) Printf(format string, v ...interface{}) {
-	p.logger.Sugar().Debugf(format, v...)
+func (p *proxyLogger) Printf(format string, v ...any) {
+	if (len(format) >= 4 && format[:4] == "WARN") || (len(format) >= 11 && strings.Contains(format[:11], "WARN")) {
+		p.logger.Warnf(format, v...)
+		return
+	}
+
+	p.logger.Debugf(format, v...)
+}
+
+const proxyCtxKey = "proxy"
+
+func (s *Server) installRoundTripper(ctx *goproxy.ProxyCtx) {
+	if ctx.RoundTripper != nil {
+		return
+	}
+
+	transport := ctx.Proxy.Tr.Clone()
+
+	dialer := s.dFactory.GetDialer()
+
+	transport.Dial = dialer.Dial
+	transport.DialContext = dialer.DialContext
+
+	ctx.RoundTripper = &roundTripper{transport: transport}
+	ctx.UserData = dialer
+
+	if ctx.Req != nil {
+		ctx.Req = ctx.Req.WithContext(context.WithValue(ctx.Req.Context(), proxyCtxKey, ctx))
+	}
+
+	if dialer.LocalAddr != nil && s.logger.Level().Enabled(zap.DebugLevel) {
+		s.logger.Debug("Selected IP to perform request", zap.String("ip", dialer.LocalAddr.String()))
+	}
 }
 
 func (s *Server) Run(ctx context.Context) error {
 	proxy := goproxy.NewProxyHttpServer()
 	proxy.Verbose = s.logger.Level().Enabled(zap.DebugLevel)
-	proxy.Logger = &proxyLogger{logger: s.logger}
+	proxy.Logger = &proxyLogger{logger: s.logger.Sugar()}
 
 	onAllReqs := proxy.OnRequest()
 
@@ -113,7 +132,7 @@ func (s *Server) Run(ctx context.Context) error {
 			s.logger.Debug("Handle CONNECT func", zap.String("host", host))
 		}
 
-		s.hookCtx(s.dFactory, ctx)
+		s.installRoundTripper(ctx)
 
 		return nil, host
 	})
@@ -122,17 +141,27 @@ func (s *Server) Run(ctx context.Context) error {
 			s.logger.Debug("Handle req func", zap.String("url", req.URL.String()))
 		}
 
-		s.hookCtx(s.dFactory, ctx)
+		s.installRoundTripper(ctx)
 
 		return req, nil
 	})
+
+	proxy.ConnectDialWithReq = func(req *http.Request, network string, addr string) (net.Conn, error) {
+		if proxyConn, ok := req.Context().Value(proxyCtxKey).(*goproxy.ProxyCtx); ok {
+			if dialer, ok := proxyConn.UserData.(*net.Dialer); ok {
+				return dialer.Dial(network, addr)
+			}
+		}
+
+		return net.Dial(network, addr)
+	}
 
 	listener, err := net.Listen("tcp", s.listenAddr)
 	if err != nil {
 		return fmt.Errorf("failed to bind HTTP server addr: %w", err)
 	}
 
-	s.logger.Info("Listening on address", zap.String("addr", s.listenAddr))
+	s.logger.Info("Listening on address", zap.String("addr", listener.Addr().String()))
 
 	errChan := make(chan error, 1)
 
