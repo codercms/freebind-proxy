@@ -13,6 +13,27 @@ type DialerFactoryIface interface {
 	GetDialer() *net.Dialer
 }
 
+// StaticDialerFactory provides user specified dialer
+// if user provided dialer is unspecified provides empty dialer struct
+type StaticDialerFactory struct {
+	dialer *net.Dialer
+}
+
+func MakeNoIpDialerFactory(dialer *net.Dialer) *StaticDialerFactory {
+	if dialer == nil {
+		dialer = &net.Dialer{}
+	}
+
+	return &StaticDialerFactory{
+		dialer: dialer,
+	}
+}
+
+func (f *StaticDialerFactory) GetDialer() *net.Dialer {
+	return f.dialer
+}
+
+// RandIpDialerFactory provides dialer with random IP from provided network prefix
 type RandIpDialerFactory struct {
 	randReader *rand.Rand
 

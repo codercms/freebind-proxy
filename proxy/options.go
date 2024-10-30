@@ -10,18 +10,6 @@ type Option interface {
 	apply(srv *Server)
 }
 
-type AuthFuncOption struct {
-	authFunc AuthCheckFunc
-}
-
-func (o *AuthFuncOption) apply(srv *Server) {
-	srv.authFunc = o.authFunc
-}
-
-func WithAuthFunc(authFunc AuthCheckFunc) *AuthFuncOption {
-	return &AuthFuncOption{authFunc}
-}
-
 type ListenAddrOption struct {
 	addr string
 }
@@ -32,6 +20,30 @@ func (o *ListenAddrOption) apply(srv *Server) {
 
 func WithListenAddr(addr string) *ListenAddrOption {
 	return &ListenAddrOption{addr}
+}
+
+type WithLoggerOption struct {
+	logger *zap.Logger
+}
+
+func (o *WithLoggerOption) apply(srv *Server) {
+	srv.logger = o.logger
+}
+
+func WithLogger(logger *zap.Logger) *WithLoggerOption {
+	return &WithLoggerOption{logger}
+}
+
+type AuthFuncOption struct {
+	authFunc AuthCheckFunc
+}
+
+func (o *AuthFuncOption) apply(srv *Server) {
+	srv.authFunc = o.authFunc
+}
+
+func WithAuthFunc(authFunc AuthCheckFunc) *AuthFuncOption {
+	return &AuthFuncOption{authFunc}
 }
 
 type WithHttpServerOption struct {
@@ -58,14 +70,15 @@ func WithGracefulShutdownTimeout(timeout time.Duration) *GracefulShutdownTimeout
 	return &GracefulShutdownTimeoutOption{timeout}
 }
 
-type WithLoggerOption struct {
-	logger *zap.Logger
+// WithHttpTransportOption allows to set preconfigured HTTP transport when proxy serves non HTTPS (HTTP only) requests
+type WithHttpTransportOption struct {
+	transport *http.Transport
 }
 
-func (o *WithLoggerOption) apply(srv *Server) {
-	srv.logger = o.logger
+func (o *WithHttpTransportOption) apply(srv *Server) {
+	srv.baseHttpTransport = o.transport
 }
 
-func WithLogger(logger *zap.Logger) *WithLoggerOption {
-	return &WithLoggerOption{logger}
+func WithHttpTransport(transport *http.Transport) *WithHttpTransportOption {
+	return &WithHttpTransportOption{transport}
 }

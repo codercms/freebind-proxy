@@ -1,0 +1,23 @@
+issues:
+  exclude-generated: disable
+  exclude-dirs:
+    - examples
+  exclude:
+    - "struct literal uses unkeyed fields"
+    - "is unused"
+    - "Dial has been deprecated since"
+
+linters:
+  disable:
+    - unused
+  enable:
+    - asasalint
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - canonicalheader
+    - copyloopvar
+    - goconst
+#    - gosec
+    - loggercheck
+    - prealloc
