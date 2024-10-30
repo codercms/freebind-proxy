@@ -356,7 +356,6 @@ func (s *Server) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Copy response headers to proxy response
-	resp.Header.Clone()
 	for key, values := range resp.Header {
 		for _, value := range values {
 			w.Header().Add(key, value)
