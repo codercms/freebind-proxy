@@ -284,7 +284,7 @@ func (s *Server) handleConnect(w http.ResponseWriter, r *http.Request) {
 	select {
 	case <-s.srvCtx.Done():
 	case <-proxyCtx.Done():
-		s.logger.Info("Client conn closed",
+		s.logger.Debug("Client conn closed",
 			zap.String("remote", clientConn.RemoteAddr().String()),
 			zap.String("host", r.Host),
 		)
